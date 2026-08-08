@@ -41,7 +41,7 @@ services:
       - key: DB_POSTGRESDB_DATABASE
         value: postgres
       - key: DB_POSTGRESDB_USER
-        value: postgres.kyemexorbnqdzmvgtclh
+        value: n8n_user.kyemexorbnqdzmvgtclh
       - key: DB_POSTGRESDB_PASSWORD
         value: "REEMPLAZAR_VIA_API_SECRETO"
       # Supabase requiere conexiones SSL
@@ -55,8 +55,9 @@ services:
         value: 5678
       - key: N8N_PROTOCOL
         value: https
-      # Desactiva runners externos para ahorrar memoria en el plan free
-      - key: N8N_RUNNERS_ENABLED
-        value: "false"
+      # Límite del heap de Node: evita "JavaScript heap out of memory" en el
+      # plan free de Render (512 MB). El default de Node deja solo ~256 MB.
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=384
       - key: GENERIC_TIMEZONE
         value: America/Caracas
