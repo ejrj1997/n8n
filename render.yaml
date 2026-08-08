@@ -36,8 +36,12 @@ services:
         value: postgresdb
       - key: DB_POSTGRESDB_HOST
         value: aws-1-us-east-2.pooler.supabase.com
+      # Puerto 6543 = Transaction Pooler de Supabase. Usar el Session Pooler
+      # (5432) hace que las conexiones TCP inactivas se "congelen" ~25s y el
+      # ping de n8n falle con timeout desde la región de Render (502/restart
+      # loop). El Transaction Pooler recicla las conexiones y es estable.
       - key: DB_POSTGRESDB_PORT
-        value: 5432
+        value: 6543
       - key: DB_POSTGRESDB_DATABASE
         value: postgres
       - key: DB_POSTGRESDB_USER
@@ -49,6 +53,14 @@ services:
         value: "true"
       - key: DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED
         value: "false"
+      # Pool de conexiones conservador + timeouts generosos: la conexión a
+      # Supabase desde el datacenter de Render es más lenta que desde casa.
+      - key: DB_POSTGRESDB_POOL_SIZE
+        value: "2"
+      - key: DB_POSTGRESDB_CONNECTION_TIMEOUT_MS
+        value: "60000"
+      - key: DB_POSTGRESDB_ACQUIRE_TIMEOUT_MS
+        value: "30000"
 
       # Configuración general de n8n
       - key: N8N_PORT
