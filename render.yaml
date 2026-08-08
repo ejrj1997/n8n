@@ -1,65 +1,62 @@
-# Use this Blueprint to deploy n8n on Render as a web
-# service that uses a Postgres database to store
-# workflow data.
+# Blueprint para desplegar n8n en Render (plan free) con Supabase Postgres
+# como base de datos persistente.
 #
-# This Blueprint uses free instance types (specified by
-# `plan`) for both the web service and the database. You
-# can upgrade to paid instance types at any time to
-# increase resources.
+# Este Blueprint usa instancias free (campo `plan`) para el servicio web.
+# n8n se despliega desde la imagen Docker oficial y guarda todos sus datos
+# (workflows, credenciales, ejecuciones) en Postgres hospedado en Supabase,
+# porque el filesystem del plan free de Render es efímero.
+#
+# La contraseña de la base de datos se configura como secreto en Render
+# (vía dashboard o API) DESPUÉS de la creación del servicio. NO se almacena
+# en este archivo por seguridad.
 
 services:
   - type: web
     plan: free
-    # This is the runtime for services that pull a prebuilt Docker image
+    # Runtime para servicios que usan una imagen Docker pre-construida
     runtime: image
-    # You can give the service any name
     name: n8n-service
     image:
-      # Pulls the n8n image tagged as latest from Docker Hub
+      # Imagen oficial de n8n (latest) desde Docker Hub
       url: docker.io/n8nio/n8n:latest
 
-    # All environment variables defined below are required!
-    #
-    # You can define additional environment variables as needed.
+    # Configuración del health check (n8n expone /healthz)
+    healthCheckPath: /healthz
+
+    # Variables de entorno requeridas por n8n
     envVars:
-      # Generates a base64-encoded key for
-      # encrypting credentials in n8n
-      #
-      # Do not modify this value after it's generated!
-      # If you do, you'll lose access to all credentials
-      # encrypted with the previous value.
+      # Clave de cifrado generada por Render y mantenida entre despliegues.
+      # NO modificarla después de la primera sincronización, o se perderán
+      # las credenciales cifradas.
       - key: N8N_ENCRYPTION_KEY
         generateValue: true
 
-      # These automatically populate connection details 
-      # for the Render Postgres database defined below
+      # Conexión a Postgres — apunta a Supabase
       - key: DB_TYPE
         value: postgresdb
-      - key: DB_POSTGRESDB_DATABASE
-        fromDatabase:
-          name: n8n-db
-          property: database
       - key: DB_POSTGRESDB_HOST
-        fromDatabase:
-          name: n8n-db
-          property: host
-      - key: DB_POSTGRESDB_PASSWORD
-        fromDatabase:
-          name: n8n-db
-          property: password
+        value: aws-1-us-east-2.pooler.supabase.com
+      - key: DB_POSTGRESDB_PORT
+        value: 5432
+      - key: DB_POSTGRESDB_DATABASE
+        value: postgres
       - key: DB_POSTGRESDB_USER
-        fromDatabase:
-          name: n8n-db
-          property: user
+        value: postgres.kyemexorbnqdzmvgtclh
+      - key: DB_POSTGRESDB_PASSWORD
+        value: "REEMPLAZAR_VIA_API_SECRETO"
+      # Supabase requiere conexiones SSL
+      - key: DB_POSTGRESDB_SSL_ENABLED
+        value: "true"
+      - key: DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED
+        value: "false"
 
-databases:
-  - name: n8n-db
-    plan: free
-    # The free instance type is limited to 1 GB of disk
-    # space.
-    #
-    # If you later upgrade to a paid instance type, you can
-    # increase the disk size to any multiple of 5 GB by
-    # setting the `diskSizeGB` property.
-    #
-    # diskSizeGB: 5
+      # Configuración general de n8n
+      - key: N8N_PORT
+        value: 5678
+      - key: N8N_PROTOCOL
+        value: https
+      # Desactiva runners externos para ahorrar memoria en el plan free
+      - key: N8N_RUNNERS_ENABLED
+        value: "false"
+      - key: GENERIC_TIMEZONE
+        value: America/Caracas
